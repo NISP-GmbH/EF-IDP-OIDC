@@ -1,4 +1,4 @@
-# EnginFrame + IDP server
+# EnginFrame + IDP server using OpenIDC
 
 This repository contain a solution to integrate EF Portal with a IDP server that is using OpenIDC standard.
 
