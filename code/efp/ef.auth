@@ -1,0 +1,251 @@
+#!/bin/sh
+
+###############################################################################
+################################################################################
+# Copyright 1999-2023 by Nice, srl., All rights reserved.
+#
+# This software includes confidential and proprietary information
+# of NICE srl. ("Confidential Information").
+# You shall not disclose such Confidential Information
+# and shall use it only in accordance with the terms of
+# the license agreement you entered into with NICE srl.
+################################################################################
+################################################################################
+
+################################################################################
+# SVN $Id$
+################################################################################
+
+################################################################################
+# This script checks the credentials of users with a given PAM service
+#
+# In order to use this authentication script within EnginFrame
+# you should specify authority="pam" in your SDF files.
+#
+# Moreover, you MUST set the PAM service you want to use inside
+#   ${EF_CONF_ROOT}/plugins/pam/ef.auth.conf
+#
+# in this way:
+#   PAM_SERVICE="system-auth"
+#
+# The list of available PAM services can be retrieved by inspecting
+# the directory /etc/pam.d
+#
+# --- Technical Details ---
+# This script accepts username and password on standard input in this format:
+#   username\0password\0
+#
+# Note: the character \0 is the ASCII code 0
+#
+# You can check this script by hand using the printf command.
+# You must set the EF_ROOT variable before doing that:
+#  $ EF_ROOT=/path/to/enginframe
+#  $ export EF_ROOT
+#  $ printf "%s\0%s\0" "username" "password" | /path/to/this/script
+#
+# Its output is a piece of well-formed XML with a "grant" or a "deny" tag:
+#
+#   When credentials are OK, you get a grant message
+#     <?xml version="1.0" encoding="utf-8"?>
+#     <ef:auth xmlns:ef="http://www.enginframe.com/2000/EnginFrame">
+#       <ef:result>
+#         <ef:grant/>
+#       </ef:result>
+#     </ef:auth>
+#
+#   When credentials are WRONG, you get a deny message
+#     <?xml version="1.0" encoding="utf-8"?>
+#     <ef:auth xmlns:ef="http://www.enginframe.com/2000/EnginFrame">
+#       <ef:result>
+#         <ef:deny/>
+#       </ef:result>
+#     </ef:auth>
+################################################################################
+
+#-------------------------------------------------------------------------------
+# Library of common functions
+#-------------------------------------------------------------------------------
+# This library define three functions:
+#  1) efauth_init    - initialization
+#  2) efauth_mapping - user mapping
+#  3) efauth_result  - prints out the XML response
+EFAUTH_LIB="${EF_ROOT}/plugins/ef/bin/ef.auth.common"
+
+#-------------------------------------------------------------------------------
+# Source common library
+#-------------------------------------------------------------------------------
+if [ -f "${EFAUTH_LIB}" \
+  -a -r "${EFAUTH_LIB}" ] ; then
+  . "${EFAUTH_LIB}"
+else
+  cat <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<ef:auth xmlns:ef="http://www.enginframe.com/2000/EnginFrame">
+  <ef:result>
+    <ef:deny/>
+  </ef:result>
+  <ef:error>
+    <ef:message><![CDATA[Unable to read common library ${EFAUTH_LIB}]]></ef:message>
+  </ef:error>
+</ef:auth>
+EOF
+  exit 1
+fi
+
+#-------------------------------------------------------------------------------
+# standard ef.auth initialization
+#-------------------------------------------------------------------------------
+efauth_init
+export PAM_SERVICE
+
+#-------------------------------------------------------------------------------
+# specific ef.auth initialization
+#-------------------------------------------------------------------------------
+# uncomment the below line if you want to debug this script. Every new session will create a unique /tmp/ef.auth.debug.log.[0-9] file where you can check the code execution
+# exec 2>"/tmp/ef.auth.debug.log.$$";set -x
+decrypt() {
+    local data="$1"
+    local key_hex="$2"
+    local nonce_hex="$3"
+
+    # Decrypt using openssl
+    local decrypted_data=$(echo -n "$data" | openssl enc -aes-128-ctr -d -K "$key_hex" -iv "$nonce_hex" -nosalt -base64 -A)
+
+    echo "$decrypted_data"
+}
+
+add_padding() {
+  local len=$(( ${#1} % 4 ))
+  if [ $len -eq 2 ]; then
+    echo "$1"'=='
+  elif [ $len -eq 3 ]; then
+    echo "$1"'='
+  else
+    echo "$1"
+  fi
+}
+
+_username="${EF_USER}"
+
+if echo ${_username} | egrep -iq "^efadmin$"
+then
+    # Find the checkpassword for your architecture
+    _checkpassword="${EF_ROOT}/plugins/pam/lib/checkpassword-pam.$(uname).$(uname -m)"
+    if [[ ! -f "${_checkpassword}" && ! -x "${_checkpassword}" ]]
+    then
+        _checkpassword="$EF_ROOT/plugins/pam/lib/checkpassword-pam.$(uname)"
+        if [[ ! -f "${_checkpassword}" && ! -x "${_checkpassword}" ]]
+        then
+            efauth_result "deny" "This architecture is not supported: $(uname -m) $(uname)"
+            exit 1
+      fi
+    fi
+
+    #-------------------------------------------------------------------------------
+    # checking credentials
+    #-------------------------------------------------------------------------------
+    # Check if the user really exists
+    if ! id "${_username}" >/dev/null 2>&1
+    then
+        efauth_result "deny" "username or password is wrong"
+        exit 1
+    fi
+    
+    # Check credentials using PAM
+    _output=$("${_checkpassword}" --debug --stdout -- /bin/sleep 0 3<&0 2>&1)
+
+    # Store exit code
+    _result="$?"
+
+    # perform further check just in case we are in a non-setuid filesystem
+    if [ ${_result} -ne 0 ]
+    then
+        _test=$(echo "${_output}" | sed -n '/^Authentication passed$/p')
+        if [ "${_test}" = "Authentication passed" ]
+        then
+            _result="0"
+        fi
+    fi
+else
+    expected_chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+    _thestdin=$(cat 5<&0)
+    _thepassword="${_thestdin#$_username}"
+    encryptedUser=$_username
+    encryptedPassword=$_thepassword
+
+    if [[ "$encryptedUser" =~ [^$expected_chars]+ ]]
+    then
+      efauth_result "deny" "username or password is wrong"
+      exit 4
+    fi
+
+    if [[ "$encryptedPassword" =~ [^$expected_chars]+ ]]
+    then
+      efauth_result "deny" "username or password is wrong"
+      exit 5
+    fi
+
+    key="##EFPAUTHSECRETKEY##"
+    nonce="##EFPAUTHNONCE##"
+    decryptedUser=$(decrypt "$encryptedUser" "$key" "$nonce")
+    _thepassword=$(decrypt "$encryptedPassword" "$key" "$nonce")
+    _username=$decryptedUser
+    _date=$(echo $_thepassword | cut -d";" -f2)
+    _thepassword=$(echo $_thepassword | cut -d";" -f1)
+    datetime_epoch=$(date -u -d "$_date" +%s)
+    current_epoch=$(date -u +%s)
+
+    #-------------------------------------------------------------------------------
+    # checking credentials
+    #-------------------------------------------------------------------------------
+    if [ $((current_epoch - datetime_epoch)) -gt 60 ]
+    then
+        efauth_result "deny" "too much time to complete the authentication"
+        exit 3
+    fi
+
+    curl_response=$(curl -H "Authorization: Bearer $_thepassword" ##USERINFOENDPOINT## -s -w "\n%{http_code}")
+    curl_status_code=$(echo "$curl_response" | tail -n1)
+    curl_response_body=$(echo "$curl_response" | sed '$d')
+
+    if [ $curl_status_code -ne 200 ]
+    then
+        efauth_result "deny" "The EnginFrame token verification failed"
+        exit 7
+    fi
+
+    if echo "$curl_response_body" | grep -iq $_username
+    then
+        _result="0"
+    fi
+
+    #-------------------------------------------------------------------------------
+    # If not authenticated, deny
+    #-------------------------------------------------------------------------------
+    if [ ! "${_result}" = "0" ] ; then
+      efauth_result "deny" "username or password is wrong"
+      exit 1
+    fi
+
+    #-------------------------------------------------------------------------------
+    # user mapping
+    #-------------------------------------------------------------------------------
+    if [ "${EFAUTH_USERMAPPING}" = "true" ]
+    then
+      _mapping=`efauth_mapping "${_username}"`
+    fi
+
+    # Recalculate exit code
+    _result="$?"
+fi
+
+
+#-------------------------------------------------------------------------------
+# final grant message
+#-------------------------------------------------------------------------------
+if [ "${_result}" = "0" ]
+then
+  efauth_result "grant" "${_mapping}"
+else
+  efauth_result "deny" "User authorizatiom failed [error code: ${_result}]"
+fi

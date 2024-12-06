@@ -1,0 +1,16 @@
+##OIDCPROVIDERURL## https://idp.domain.com/auth/realms/kums-mfa
+##AUTHENDPOINT## https://idp.domain.com/auth/realms/kums-mfa/protocol/openid-connect/auth
+##TOKENENDPOINT## https://idp.domain.com/auth/realms/kums-mfa/protocol/openid-connect/token
+##USERINFOENDPOINT## https://idp.domain.com/auth/realms/kums-mfa/protocol/openid-connect/userinfo
+##ISSUERENDPOINT## https://idp.domain.com/auth/realms/kums-mfa
+##JWKSENDPOINT## https://idp.domain.com/auth/realms/kums-mfa/protocol/openid-connect/certs
+##EFPALIAS## site
+##SSOLOGIN## auth
+##SSOPATH## sso
+##OIDCAPACHEDOMAIN## eflogin.domain.com
+##EFPENDPOINT## https://myefportal.domain.com:8443/
+##PHPCALLBACK## callback.php
+##CLIENTID## idp-11111-222222-3333333333333333-444444444444
+##CLIENTSECRET## idps_yBT6R5RCTVYBUnby766tv7ybuniinyubtvrcvtybu
+##RANDOMSECRETPHRASE## notused
+##ADMINEMAIL## admin@domain.com
