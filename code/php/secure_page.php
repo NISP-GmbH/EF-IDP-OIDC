@@ -7,7 +7,8 @@ use Jumbojett\OpenIDConnectClient;
 
 session_start();
 
-function makeRequest($url, $method = 'GET', $data = null, $headers = []) {
+function makeRequest($url, $method = 'GET', $data = null, $headers = [])
+{
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -38,13 +39,15 @@ function makeRequest($url, $method = 'GET', $data = null, $headers = []) {
 }
 
 // Validate the token format
-function validateTokenFormat($token, $maxLength) {
+function validateTokenFormat($token, $maxLength)
+{
     $allowedChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-';
     return strlen($token) <= $maxLength && strspn($token, $allowedChars) === strlen($token);
 }
 
 // Check token validity (get preferred_username)
-function checkTokenAndGetPreferredUsername($token) {
+function checkTokenAndGetPreferredUsername($token)
+{
     $userinfo_url = '##USERINFOENDPOINT##';
     $headers = [
         'Authorization: Bearer ' . $token
@@ -59,7 +62,8 @@ function checkTokenAndGetPreferredUsername($token) {
     return null;
 }
 
-function encrypt($data, $key, $nonce) {
+function encrypt($data, $key, $nonce)
+{
     // Convert the key and nonce from hex to binary
     $key = hex2bin($key);
     $nonce = hex2bin($nonce);
@@ -86,7 +90,8 @@ function encrypt($data, $key, $nonce) {
 $cookies = [];
 
 // Function to extract cookies from response headers
-function extractCookies($responseHeaders) {
+function extractCookies($responseHeaders)
+{
     $cookies = [];
     foreach ($responseHeaders as $header) {
         if (preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $matches)) {
@@ -98,92 +103,98 @@ function extractCookies($responseHeaders) {
 }
 
 // Function to format cookies as a string
-function formatCookies($cookies) {
-  $cookieString = '';
-  foreach ($cookies as $key => $value) {
-    $cookieString .= "$key=$value; ";
-  }
-  return rtrim($cookieString, '; ');
+function formatCookies($cookies)
+{
+    $cookieString = '';
+    foreach ($cookies as $key => $value) {
+        $cookieString .= "$key=$value; ";
+    }
+    return rtrim($cookieString, '; ');
 }
 
 // Function to set cookies for the cURL session
-function setCookies($ch, $cookies) {
-  $cookieString = formatCookies($cookies);
-  curl_setopt($ch, CURLOPT_COOKIE, $cookieString);
+function setCookies($ch, $cookies)
+{
+    $cookieString = formatCookies($cookies);
+    curl_setopt($ch, CURLOPT_COOKIE, $cookieString);
 }
 
 // Open a Session with EnginFrame and get the CSRF token
-function getSession($efp_endpoint,$debug) {
-  try {
-    // get JSESSIONID
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "$efp_endpoint/enginframe/vdi/vdi.xml?_uri=//com.enginframe.interactive/list.sessions");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Ignore SSL validation
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Ignore SSL host validation
+// Returns an array with 'token' and 'cookies' keys
+function getSession($efp_endpoint, $debug)
+{
+    try {
+        // get JSESSIONID
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, "$efp_endpoint/enginframe/vdi/vdi.xml?_uri=//com.enginframe.interactive/list.sessions");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Ignore SSL validation
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Ignore SSL host validation
 
-    // Execute initial request to get cookies
-    curl_setopt($ch, CURLOPT_HEADER, true);
-    curl_setopt($ch, CURLOPT_NOBODY, true);
+        // Execute initial request to get cookies
+        curl_setopt($ch, CURLOPT_HEADER, true);
+        curl_setopt($ch, CURLOPT_NOBODY, true);
 
-    $initialResponse = curl_exec($ch);
-    $responseHeaders = explode("\r\n", $initialResponse);
-    $cookies = extractCookies($responseHeaders);
+        $initialResponse = curl_exec($ch);
+        $responseHeaders = explode("\r\n", $initialResponse);
+        $cookies = extractCookies($responseHeaders);
 
-    // Set cookies for the next request
-    setCookies($ch, $cookies);
+        // Set cookies for the next request
+        setCookies($ch, $cookies);
 
-    // Execute actual request
-    // to get CSRF token
-    // Set cURL options
-    curl_setopt($ch, CURLOPT_URL, "$efp_endpoint/enginframe/CsrfGuardServlet");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Ignore SSL validation
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Ignore SSL host validation
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-      "Referer: $efp_endpoint/enginframe",
-      "FETCH-CSRF-TOKEN: 1"
-    ]);
+        // Execute actual request
+        // to get CSRF token
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_URL, "$efp_endpoint/enginframe/CsrfGuardServlet");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Ignore SSL validation
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Ignore SSL host validation
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Referer: $efp_endpoint/enginframe",
+            "FETCH-CSRF-TOKEN: 1"
+        ]);
 
-    // Execute cURL request
-    $response = curl_exec($ch);
-    if ($debug) {
-      echo "Curl response to get CSRF token: <br>";
-      print_r($response);
+        // Execute cURL request
+        $response = curl_exec($ch);
+        if ($debug) {
+            echo "Curl response to get CSRF token: <br>";
+            print_r($response);
+        }
+
+        // Use regular expression to extract the token
+        if (preg_match('/anti-csrftoken-a2z:([A-Z0-9-]+)/', $response, $matches)) {
+            $token = $matches[1];
+            // Return both the token and cookies
+            return ['token' => $token, 'cookies' => $cookies];
+        } else {
+            echo "Token not found\n";
+            die();
+        }
+    } catch (Exception $e) {
+        // Handle the exception
+        echo "An error occurred: " . $e->getMessage();
+        // Optionally log the error
+        error_log("cURL error: " . $e->getMessage());
+    } finally {
+        // Close cURL handle if it was successfully initialized
+        if (isset($ch) && $ch !== false) {
+            curl_close($ch);
+        }
     }
-
-    // Use regular expression to extract the token
-    if (preg_match('/anti-csrftoken-a2z:([A-Z0-9-]+)/', $response, $matches)) {
-      $token = $matches[1];
-      return $token;
-    }
-    else {
-      echo "Token not found\n";
-      die();
-    }
-  } catch (Exception $e) {
-    // Handle the exception
-    echo "An error occurred: " . $e->getMessage();
-    // Optionally log the error
-    error_log("cURL error: " . $e->getMessage());
-  } finally {
-    // Close cURL handle if it was successfully initialized
-    if (isset($ch) && $ch !== false) {
-        curl_close($ch);
-    }
-  }
 }
 
 // function to execute the Login into EnginFrame
-function doLogin($efp_token,$accessToken,$efp_encrypted_user,$efp_encrypted_pass) {
-  $efp_token = $efp_token;
-  $user_token = $accessToken;
-  $username = htmlspecialchars($efp_encrypted_user, ENT_QUOTES, 'UTF-8');
-  $password = htmlspecialchars($efp_encrypted_pass, ENT_QUOTES, 'UTF-8');
-  setcookie('JSESSIONID', $cookies["JSESSIONID"], time() + 3600, '/');
+function doLogin($efp_token, $accessToken, $efp_encrypted_user, $efp_encrypted_pass, $cookies)
+{
+    $user_token = $accessToken;
+    $username = htmlspecialchars($efp_encrypted_user, ENT_QUOTES, 'UTF-8');
+    $password = htmlspecialchars($efp_encrypted_pass, ENT_QUOTES, 'UTF-8');
+    if (isset($cookies["JSESSIONID"])) {
+        setcookie('JSESSIONID', $cookies["JSESSIONID"], time() + 3600, '/');
+    }
 
-  echo '
+    echo '
     <form id="redirectForm" method="post" action="##EFPENDPOINT##enginframe/vdi/vdi.xml?_uri=//com.enginframe.interactive/list.sessions">
       <!--         <form id="redirectForm" method="post" action="##EFPENDPOINT##enginframe/vdi/vdi.admin.xml?_uri=//vdi.admin/manage.services">  -->
       <input type="hidden" name="_username" value="' . $username . '">
@@ -193,7 +204,7 @@ function doLogin($efp_token,$accessToken,$efp_encrypted_user,$efp_encrypted_pass
     <script>
       document.getElementById("redirectForm").submit();
     </script>';
-        exit();
+    exit();
 }
 
 if ($debug) {
@@ -204,13 +215,12 @@ if (!isset($_SESSION['access_token'])) {
     error_log("Access token not found in session");
     header('Location: error.php');
     exit;
-}
-else {
+} else {
     $accessToken = $_SESSION['access_token'];
 }
 
 
-if ($debug) { 
+if ($debug) {
     error_log("Access Token: " . $accessToken);
 }
 
@@ -248,10 +258,10 @@ if ($debug) {
 $oidc->setAccessToken($accessToken);
 
 if ($debug) {
-$result = validateTokenFormat($accessToken, 2500);
+    $result = validateTokenFormat($accessToken, 2500);
 
-echo "Token validation result: " . ($result ? "true" : "false") . "\n";
-echo "Token length: " . strlen($accessToken) . "\n";
+    echo "Token validation result: " . ($result ? "true" : "false") . "\n";
+    echo "Token length: " . strlen($accessToken) . "\n";
 }
 
 try {
@@ -276,23 +286,26 @@ try {
                 $efp_pass = $accessToken;
                 date_default_timezone_set('UTC');
                 $current_time = date('Y-m-d H:i:s');
-                $efp_pass .=";" . $current_time;
+                $efp_pass .= ";" . $current_time;
 
                 $key = '##EFPAUTHSECRETKEY##';
                 $nonce = '##EFPAUTHNONCE##';
                 $efp_encrypted_user = encrypt($efp_user, $key, $nonce);
                 $efp_encrypted_pass = encrypt($efp_pass, $key, $nonce);
 
-                // Get EFP token
-                $efp_token = getSession($efp_endpoint,$debug);
+                // Get EFP token and cookies
+                $sessionData = getSession($efp_endpoint, $debug);
+                $efp_token = $sessionData['token'];
+                $cookies = $sessionData['cookies'];
 
                 if ($debug) {
                     echo "EFP Token: >>> " . $efp_token . " <<<. <br>";
                     echo "efp_encrypted_user: >>> " . $efp_encrypted_user . " <<<. <br>";
                     echo "efp_encrypted_pass: >>> " . $efp_encrypted_pass . " <<<. <br>";
+                    echo "JSESSIONID: >>> " . (isset($cookies['JSESSIONID']) ? $cookies['JSESSIONID'] : 'not set') . " <<<. <br>";
                 }
 
-                doLogin($efp_token,$accessToken,$efp_encrypted_user,$efp_encrypted_pass);
+                doLogin($efp_token, $accessToken, $efp_encrypted_user, $efp_encrypted_pass, $cookies);
             } else {
                 // Token is invalid or we couldn't get the preferred_username
                 echo "Error: Invalid token or unable to retrieve preferred_username";
@@ -301,7 +314,7 @@ try {
             echo "Error: Invalid token format";
         }
     } catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+        echo "Error: " . $e->getMessage();
     }
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
