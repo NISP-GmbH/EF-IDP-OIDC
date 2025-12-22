@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ###############################################################################
 ################################################################################
@@ -131,14 +131,14 @@ if echo ${_username} | egrep -iq "^efadmin$"
 then
     # Find the checkpassword for your architecture
     _checkpassword="${EF_ROOT}/plugins/pam/lib/checkpassword-pam.$(uname).$(uname -m)"
-    if [[ ! -f "${_checkpassword}" && ! -x "${_checkpassword}" ]]
+    if [ ! -f "${_checkpassword}" ] || [ ! -x "${_checkpassword}" ]
     then
         _checkpassword="$EF_ROOT/plugins/pam/lib/checkpassword-pam.$(uname)"
-        if [[ ! -f "${_checkpassword}" && ! -x "${_checkpassword}" ]]
+        if [ ! -f "${_checkpassword}" ] || [ ! -x "${_checkpassword}" ]
         then
             efauth_result "deny" "This architecture is not supported: $(uname -m) $(uname)"
             exit 1
-      fi
+        fi
     fi
 
     #-------------------------------------------------------------------------------
@@ -173,13 +173,13 @@ else
     encryptedUser=$_username
     encryptedPassword=$_thepassword
 
-    if [[ "$encryptedUser" =~ [^$expected_chars]+ ]]
+    if echo "$encryptedUser" | grep -q "[^$expected_chars]"
     then
       efauth_result "deny" "username or password is wrong"
       exit 4
     fi
 
-    if [[ "$encryptedPassword" =~ [^$expected_chars]+ ]]
+    if echo "$encryptedPassword" | grep -q "[^$expected_chars]"
     then
       efauth_result "deny" "username or password is wrong"
       exit 5
