@@ -2,7 +2,7 @@
 
 for installer_script in install_packs.sh replace_strings.sh install_ssl.sh install_webserver.sh install_efauth.sh
 do
-    if echo $installer_script | egrep -iq "replace_strings"
+    if echo $installer_script | grep -Eiq "replace_strings"
     then
         /bin/bash ${installer_script}
         return_code=$?

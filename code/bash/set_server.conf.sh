@@ -1,6 +1,6 @@
 #!/bin/bash
 
-server_conf=$(find /opt/nisp/ -iname server.conf | egrep -i "enginframe/conf/server.conf")
+server_conf=$(find /opt/nisp/ -iname server.conf | grep -Ei "enginframe/conf/server.conf")
 
 if [ -f $server_conf ]
 then

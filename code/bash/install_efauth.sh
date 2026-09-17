@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ef_auth_file=$(find /opt/nisp/ -iname ef.auth | egrep -i "enginframe/plugins/pam/bin")
+ef_auth_file=$(find /opt/nisp/ -iname ef.auth | grep -Ei "enginframe/plugins/pam/bin")
 
 if [[ "${ef_auth_file}x" != "x" ]]
 then
@@ -23,7 +23,7 @@ else
     echo "Important: >>> ef.auth <<< can not be found. You need to copy code/efp/ef.auth and replace the file: /opt/nisp/enginframe/2024.0-r1786/enginframe/plugins/pam/bin/ef.auth"
 fi
 
-ef_auth_conf_file=$(find /opt/nisp -iname ef.auth.conf | egrep -i "enginframe/plugins/pam/conf")
+ef_auth_conf_file=$(find /opt/nisp -iname ef.auth.conf | grep -Ei "enginframe/plugins/pam/conf")
 
 if [[ "${ef_auth_conf_file}x" != "x" ]]
 then
