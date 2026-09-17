@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Detect OS version
-if cat /etc/redhat-release | egrep -qi "(Red Hat.*8\..*|Alma.*Linux.*8\..*|Rocky.*Linux.*8\..*)"
+if cat /etc/redhat-release | grep -Eqi "(Red Hat.*8\..*|Alma.*Linux.*8\..*|Rocky.*Linux.*8\..*)"
 then
     # RHEL 8 steps
     sudo dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
     sudo dnf -y install https://rpms.remirepo.net/enterprise/remi-release-8.rpm
-elif cat /etc/redhat-release | egrep -qi "(Red Hat.*9\..*|Alma.*Linux.*9\..*|Rocky.*Linux.*9\..*)"
+elif cat /etc/redhat-release | grep -Eqi "(Red Hat.*9\..*|Alma.*Linux.*9\..*|Rocky.*Linux.*9\..*)"
 then
     # RHEL 9 steps
     sudo dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm

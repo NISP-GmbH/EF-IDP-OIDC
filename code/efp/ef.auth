@@ -127,7 +127,7 @@ add_padding() {
 
 _username="${EF_USER}"
 
-if echo ${_username} | egrep -iq "^efadmin$"
+if echo ${_username} | grep -Eiq "^efadmin$"
 then
     # Find the checkpassword for your architecture
     _checkpassword="${EF_ROOT}/plugins/pam/lib/checkpassword-pam.$(uname).$(uname -m)"
